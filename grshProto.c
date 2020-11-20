@@ -13,44 +13,36 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
-void complain();
-char * getPath(const char *, const char *);
-void runCommand(char ** commandv, int commandc, const char * path);
-
 char * getPath(const char * path, const char * command){
-    char * absolutePath = NULL;
+    char * pathCheck = NULL;
     char * nextToken = NULL;
-    char * pathCopy = strdup(path);
+    char * tokenPath = strdup(path);
     
-    nextToken = strtok(pathCopy, ":");
+    nextToken = strtok(tokenPath, ":");
     while(nextToken != NULL){
         // Print nextToken
         //printf("Token (path): %s\n", nextToken);
-        // Reset absolutePath
-        free(absolutePath);
-        absolutePath = NULL;
+        // Reset pathCheck
+        free(pathCheck);
+        pathCheck = NULL;
         // + 2 : One for insertion of '/', one for terminating '\0'
-        absolutePath = (char *) calloc(strlen(nextToken) + strlen(command) + 2, sizeof(char));
-        absolutePath[0] = '\0';
-        // Build absolutePath
-        strcat(absolutePath, nextToken);
-        strcat(absolutePath, "/");
-        strcat(absolutePath, command);
-        // Print absolutePath
-        //printf("Full Path: %s\n", absolutePath);
-        if(access(absolutePath, X_OK) == 0){
+        pathCheck = (char *) calloc(strlen(nextToken) + strlen(command) + 2, sizeof(char));
+        pathCheck[0] = '\0';
+        // Build pathCheck
+        strcat(pathCheck, nextToken);
+        strcat(pathCheck, "/");
+        strcat(pathCheck, command);
+        // Print pathCheck
+        //printf("Full Path: %s\n", pathCheck);
+        if(access(pathCheck, X_OK) == 0){
             // Success, return valid path
-            printf("SUCCESS\n");
-            
-            return absolutePath;
+            //printf("SUCCESS\n");
+            return pathCheck;
         }
         // Advance token scanner
         nextToken = strtok(NULL, ":");
     }
     // Failure, return null
-    free(absolutePath);
-    absolutePath = NULL;
-    printf("absolutePath freed\n");
     return NULL;
     
     /*char pathCheck [100];
@@ -89,77 +81,28 @@ void complain(){
     fprintf(stderr, "An error has occurred\n");
 }
 
-void runCommand(char ** commandv, int commandc, const char * path){
-    int mypid;
-    char * absolutePath = NULL;
-    
-    for(int i = 0; i < commandc; i++){
-        printf("1: Commandv[%d]: %s\n", i, commandv[i]);
-    }
-    
-    mypid = fork();
-    if(mypid < 0){
-        // Fork failed, print error and continue
-        complain();
-    }
-    else{
-        // Child path
-        if (mypid == 0){
-            for(int i = 0; i < commandc; i++){
-                printf("2: Commandv[%d]: %s\n", i, commandv[i]);
-            }
-            // Check for file access (go through path)
-            absolutePath = getPath(path, commandv[0]);
-            
-            printf("absolutePath: %s\n", absolutePath);
-            for(int i = 0; i < commandc; i++){
-                printf("3: Commandv[%d]: %s\n", i, commandv[i]);
-            }
-            if(absolutePath != NULL){
-                execv(absolutePath, commandv);
-            }
-            // If execution reaches here, error has occurred
-            complain();
-            // Cleanup before exit
-            free(absolutePath);
-            // Quit out of child
-            exit(0);
-        }
-        // Parent path
-        else{
-            wait(NULL);
-        }
-    }
-}
-
 int main (int argc, char * argv[]){
     
     const char * DEFAULT_PATH = "/bin";
     FILE * source = NULL;
     char * line = NULL;
-    char * lineCopy = NULL;
     size_t size = 0;
     char * path = NULL;
     //char path [100];
     char * nextToken = NULL;
     char ** commandv = NULL;
-    // For strtok_r
-    char ** tokCounter = NULL;
-    char ** tokGetter = NULL;
     //OLD
     //char * commandv [30];
     char * exePath = NULL;
     int commandc = 0;
-    int countR = 0;
-    int pathLength = 0;
-    int pMode = 0;
-    // 0 is default
     int mypid;
+    int pathSize = 0;
     
     // Initial setup of path
     path = calloc(strlen(DEFAULT_PATH) + 1, sizeof(char));
     path[0] = '\0';
     strcat(path, DEFAULT_PATH);
+    pathSize = strlen(path);
     
     // Batch mode
     if(argc == 2){
@@ -170,20 +113,15 @@ int main (int argc, char * argv[]){
             return 1;
         }
     }
-    // Interactive mode
     if(argc == 1){
         source = stdin;
     }
-    // Valid modes: Interactive / Batch
+    // Interactive mode
     if(argc == 1 || argc == 2){
-        // Print prompt
-        if(argc == 1){
-            // (Only in interactive mode)
-            printf("grsh> ");
-        }
+        printf("grsh> ");
         while(getline(&line, &size, source) != -1){
             // Test printing
-            printf("Line: %s", line);
+            //printf("Line: %s", line);
             
             // Exit command (built in)
             if(strcmp(line, "exit\n") == 0){
@@ -192,40 +130,20 @@ int main (int argc, char * argv[]){
             
             // TOKENIZATION
             
-            //commandv = (char **) calloc(strlen(line), sizeof(char *));
-            
-            
-            //nextToken = strtok(line, " \n");
-            // X
-            /*lineCopy = strdup(line);
-            printf("lineCopy: %s", lineCopy);
-            nextToken = strtok(lineCopy, " \n");
-            if(nextToken != NULL){
-                numTokens = 1;
-                printf("numTokens: %d\n", numTokens);
-            }
-            while(strtok(NULL, " \n") != NULL){
-                numTokens++;
-                printf("numTokens: %d\n", numTokens);
-            }*/
-            //X
-            //commandv = (char **) calloc(numTokens + 1, sizeof(char *));
+            commandv = (char **) calloc(strlen(line), sizeof(char *));
             
             nextToken = strtok(line, " \n");
             
             while(nextToken != NULL){
                 // Print nextToken
-                printf("Token: %s\n", nextToken);
-                
+                //printf("Token: %s\n", nextToken);
                 // Add token to commandv
-                //*
-                printf("Next size**: %d\n", (commandc + 1));
-                commandv = (char **) realloc(commandv, (commandc + 1) * sizeof(char *));
+                //commandv = (char **) realloc(commandv, (commandc + 1) * sizeof(char *));
                 
                 commandv[commandc] = strdup(nextToken);
-                
-                printf("0: Commandv[%d]: %s\n", commandc, commandv[commandc]);
-                
+                //printf("0: Commandv[%d]: %s\n", commandc, commandv[commandc]);
+                //OLD
+                //commandv[commandc] = strdup(nextToken);
                 commandc++;
                 
                 // Advance token scanner
@@ -233,77 +151,32 @@ int main (int argc, char * argv[]){
             }
             
             // Set null pointer at the end of commandv (for execv)
-            
             commandv[commandc] = NULL;
             
             // END TOKENIZATION
             
-            // Look for redirection operator
-            
-            for(int i = 1; i < commandc; i++){
-                printf("Looking for >\n");
-                nextToken = commandv[i];
-                if(strcmp(nextToken, ">") == 0){
-                    printf("Redirection Detected at [%d]\n", (commandc - 1));
-                    countR++;
-                    // TO DO:
-                        // Look for multiple '>' or more than 1 file, in that 
-                        // case, skip next code block
-                }
-            }
-            if(countR > 0){
-                // First argument for safe array access (short circuit eval)
-                if(commandc >= 3 && (countR == 1 && commandv[commandc - 2])){
-                    // Modify file descriptor here
-                    printf("File descriptor to be modified\n");
-                }
-                else{
-                    // Print error for bad usage of redirection
-                    complain();
-                }
-            }
-            
-            printf("commandc %d\n", commandc);
             // Path command (built in)
             if(strcmp(commandv[0], "path") == 0){
                 // Wipe contents of path
-                free(path);
-                path = NULL;
-                pathLength = 0;
-                
+                path[0] = '\0';
+                pathSize = 0;
                 for(int i = 0; i < commandc; i++){
-                    printf("PA: Commandv[%d]: %s\n", i, commandv[i]);
+                    //printf("PA: Commandv[%d]: %s\n", i, commandv[i]);
                 }
-                
-                for(int i = 1; i < commandc; i++){
-                    // Add +1 for ':' delimiter
-                    pathLength += (strlen(commandv[i]) + 1);
-                }
-                // Add +1 for terminating '\0'
-                pathLength++;
-                //printf("Next size (path): %d\n", pathLength);
-                //path = (char *) calloc(pathLength, sizeof(char));
-                // Initialize path for future append
-                //path[0] = '\0';
                 
                 for(int i = 1; i < commandc; i++){
                     // + 2 : One for insertion of ':', one for terminating '\0'
-                    if(path == NULL){
-                        printf("Next size: %d\n", (int)(strlen(commandv[i]) + 2));
-                        path = (char *) calloc(strlen(commandv[i]) + 2, sizeof(char));
-                    }
-                    else{
-                        printf("Next size: %d\n", (int)(strlen(path) + strlen(commandv[i]) + 2));
-                        path = (char *) realloc(path, sizeof(char) * (strlen(path) + strlen(commandv[i]) + 2));
-                    }
-                    path[0] = '\0';
+                    path = (char *) realloc(path, sizeof(char) * (strlen(path) + strlen(commandv[i]) + 2));
+                    
+                    pathSize = strlen(path);
                     strcat(path, commandv[i]);
                     strcat(path, ":");
-
-                    printf("Path: %s\n", path);
-
+                    // Do not append 
+                    //if(i != commandc - 1){
+                    //printf("Path: %s\n", path);
+                    //}
                     for(int j = 0; j < commandc; j++){
-                        printf("PAj: Commandv[%d]: %s\n", j, commandv[j]);
+                        //printf("PAj: Commandv[%d]: %s\n", j, commandv[j]);
                     }
                 }
             }
@@ -320,8 +193,42 @@ int main (int argc, char * argv[]){
             }
             // Non-built-in command
             else{
-                printf("Running the juice\n");
-                runCommand(commandv, commandc, path);
+                
+                for(int i = 0; i < commandc; i++){
+                    //printf("1: Commandv[%d]: %s\n", i, commandv[i]);
+                }
+                        
+                        
+                mypid = fork();
+                if(mypid < 0){
+                    // Fork failed, print error and continue
+                    complain();
+                }
+                else{
+                    // Child path
+                    if (mypid == 0){
+                        for(int i = 0; i < commandc; i++){
+                            printf("2: Commandv[%d]: %s\n", i, commandv[i]);
+                        }
+                        // Check for file access (go through path)
+                        exePath = getPath(path, commandv[0]);
+                        
+                        //printf("exePath: %s\n", exePath);
+                        for(int i = 0; i < commandc; i++){
+                            printf("3: Commandv[%d]: %s\n", i, commandv[i]);
+                        }
+                        if(exePath != NULL){
+                            execv(exePath, commandv);
+                        }
+                        // If execution reaches here, error has occurred
+                        complain();
+                        return 1;
+                    }
+                    // Parent path
+                    else{
+                        wait(NULL);
+                    }
+                }
             }
             
             
@@ -344,40 +251,18 @@ int main (int argc, char * argv[]){
             
             
 
-            // Each command line parse requires state reset for the following variables:
+            // Cleanup
             //free(nextCommand);
             //nextCommand = NULL;
-            
-            /*for(int i = 0; i < commandc; i++){
-                free(commandv[i]);
-                commandv[i] = NULL;
-            }*/
             free(commandv);
             commandv = NULL;
             commandc = 0;
-            countR = 0;
-            tokCounter = NULL;
-            tokGetter = NULL;
             //free(tokenLine);
             //tokenLine = NULL;
             
-            // Print prompt before returning control to user 
-            if(argc == 1){
-                // (Interactive mode only)
-                printf("grsh> ");
-            }
+            // Print prompt before returning control to user
+            printf("grsh> ");
         }
-        // Program Cleanup
-        free(path);
-        path = NULL;
-        /*for(int i = 0; i < commandc; i++){
-            free(commandv[i]);
-            commandv[i] = NULL;
-        }*/
-        free(commandv);
-        commandv = NULL;
-        free(exePath);
-        exePath = NULL;
         if(argc == 2){
             // One file finished, close it
             fclose(source);
